@@ -26,15 +26,15 @@ The health check is `/api/health`. It answers 200 once sign-in is configured and
 
 ## Variables
 
-You don't have to fill in anything to deploy.
+The deploy form asks for one value: `DATAFORSEO_API_KEY`. Everything else has a default or is optional.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `S3_ENDPOINT`, `CELLD_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | references to the Bucket | Storage wiring. Railway creates the bucket and its keys |
 | `BETTER_AUTH_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` | Public address used for sign-in links and cookies. Change it if you add a custom domain |
 | `PORT` | `3001` | Nginx listens here; the public domain points to it |
-| `DATAFORSEO_API_KEY` | empty, optional | Base64 of `login:password` from DataForSEO. Keyword, backlink, rank and site data |
-| `TREG_API_TOKEN` | empty, optional | Instead of DataForSEO: the same data, paid per call through treg |
+| `DATAFORSEO_API_KEY` | **required**, no default | Base64 of `login:password` from [DataForSEO API Access](https://app.dataforseo.com/api-access): `printf '%s' 'LOGIN:PASSWORD' \| base64`. Keyword, backlink, rank and site data |
+| `TREG_API_TOKEN` | empty, optional | treg token: the same DataForSEO data, paid per call. Used only while `DATAFORSEO_API_KEY` is empty, so after deploy you would clear that key to switch to treg |
 | `OPENROUTER_API_KEY` | empty, optional | SAM conversations, website research and summaries |
 | `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` | empty, optional | Another OpenAI-compatible server, and the model to use |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty, optional | Search Console and Analytics linking with your own Google OAuth app |
@@ -42,13 +42,25 @@ You don't have to fill in anything to deploy.
 | `CONTEXT_API_KEY` | empty, optional | JavaScript rendering for site audits |
 | `CRAWLER_ACCESS_SECRET` | generated (48 chars) | Encrypts saved Shopify crawler signatures |
 
+### Getting the DataForSEO key
+
+`DATAFORSEO_API_KEY` is not the key shown on DataForSEO's dashboard. It is the base64 of your API login and API password:
+
+1. Open [DataForSEO API Access](https://app.dataforseo.com/api-access) and copy your API login and API password (DataForSEO emails them on request).
+2. On your computer, run `printf '%s' 'LOGIN:PASSWORD' | base64` with your own login and password.
+3. Paste the output into the `DATAFORSEO_API_KEY` field of the deploy form.
+
+To change it later: in Railway, open the **OpenSEO** service, then **Variables**, edit `DATAFORSEO_API_KEY` and deploy the change. The app reads it again on start, about a minute later.
+
+OpenSEO's own in-app help page for the key only describes Cloudflare Workers. On Railway, use the steps above.
+
 Fixed settings are in `start.sh` (`AUTH_MODE=password` and upstream's runtime limits). Any of them can be overridden with a variable on the service. Provider keys can be added or changed later; Railway redeploys the service and init applies them.
 
 ## After deploy
 
 1. **Create the admin account right away.** Open the public URL: the first visitor creates the administrator's account, and registration then closes. Until you do it, anyone with the URL could take it.
 2. Add teammates from invitation links in the app.
-3. SEO data needs a DataForSEO key or a treg token. Set `DATAFORSEO_API_KEY` or `TREG_API_TOKEN` on the OpenSEO service; the in-app setup guide explains how to get one.
+3. The DataForSEO key you entered at deploy powers keyword, domain, backlink and rank data. If the app shows "Setup needed", the key is empty: set it as described in [Getting the DataForSEO key](#getting-the-dataforseo-key). OpenSEO's in-app help page only covers Cloudflare.
 4. For Google Search Console or Analytics, register your own OAuth app with the redirect URLs `https://YOUR-DOMAIN/api/gsc/oauth/callback` and `https://YOUR-DOMAIN/api/ga4/oauth/callback`. See upstream's [Search Console guide](https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md).
 5. With a custom domain, set `BETTER_AUTH_URL` to `https://YOUR-DOMAIN`.
 
